@@ -1,0 +1,11 @@
+export { name, Config, apply, inject } from './plugin.ts';
+export type { Config as SessionInsightsConfig } from './plugin.ts';
+export { SidecarStore, expandHome } from './sidecar-store.ts';
+export { aggregate, dayBars, sessionTurns } from './pure/stats.ts';
+export type { InsightsAggregate, SessionStats, DaySlice, SessionEventRecord } from './pure/stats.ts';
+export { toCsv } from './pure/csv.ts';
+export { parseJsonl, parseRecordLine } from './pure/sidecar.ts';
+export { toBuckets, type RawUsage } from './usage.ts';
+export { DEEPSEEK_CATALOG, mergeCatalog } from './pricing/catalog.ts';
+export { costOf, totalTokens, emptyBuckets, mergeBuckets, type TokenBuckets } from './pricing/cost.ts';
+export { resolveModel } from './pricing/resolve.ts';

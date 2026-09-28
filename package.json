@@ -1,0 +1,77 @@
+{
+  "name": "dsh-plugin-session-insights",
+  "version": "0.1.0",
+  "description": "dsh plugin: cross-session analytics. Host accumulates per-session usage into monthly JSONL sidecars and serves /insights + CSV export; web client gains a Session Insights tab from verified projections.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./lib/index.js",
+  "types": "./lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./stats": {
+      "types": "./lib/types/pure/index.d.ts",
+      "default": "./lib/pure/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-session"
+      ],
+      "immediately": true
+    }
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
+    "test": "node --test \"test/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "analytics",
+    "sessions",
+    "telemetry"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/121212165/dsh-plugin-session-insights.git"
+  },
+  "sideEffects": false,
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-base": "^0.1.2-alpha.4",
+    "@deepseek-ai/schemastery": "^3.18.2",
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.0"
+  }
+}

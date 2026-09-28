@@ -1,0 +1,10 @@
+# Mounts session-insights into a dsh profile. Later layers win per row, no deep merge.
+- insert:
+    - id: session-insights
+      name: dsh-plugin-session-insights
+      config:
+        enabled: true
+        # dataDir: ~/.dsh/session-insights   # monthly JSONL sidecars of per-session usage
+        # exportDir: ~                        # where /insights-export writes CSV (default: dataDir)
+        topSessions: 10     # rows in the "most expensive sessions" table
+        recentDays: 14      # window of the per-day trend
