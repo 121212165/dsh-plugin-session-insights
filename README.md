@@ -11,6 +11,10 @@ DeepSeek Harness (dsh) 插件：跨会话活动统计。host 侧把每个会话�
 - **web 面板**：`conversation.view` 槽位新增 "Session Insights" 标签，读 `sessionStats` / `tokenUsage` 投影展示当前会话统计——与 dsh-token-telemetry 同一条已验证数据路径。
 - **容错**：崩溃半行跳过并计数，文件不改写，`/insights` 里提示损坏行数。
 
+## 安装
+
+克隆或 npm 安装本目录到 profile 的 node_modules，再在 profile 的 cordis.patch.yml 加入本仓库 cordis.patch.yml 的 insert 行。从源码安装需要先构建：`npm install` 会经 `prepare` 脚本自动产出 `lib/`（`npm run build` 也可手动触发）。
+
 ## 数据模型
 
 边车文件 `~/.dsh/session-insights/insights-YYYY-MM.jsonl`，每行：
