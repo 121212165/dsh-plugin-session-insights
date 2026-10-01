@@ -11,9 +11,6 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
-    "./client": {
-      "default": "./lib/client.js"
-    },
     "./stats": {
       "types": "./lib/types/pure/index.d.ts",
       "default": "./lib/pure/index.js"

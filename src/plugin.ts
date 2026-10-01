@@ -2,7 +2,8 @@
  * dsh wiring for the session-insights plugin.
  *
  * Accounting rides the same event surface price-aware verified (session/event
- * assistant/message usage + agent/request model capture), but the sidecar is
+ * assistant/message usage, with the model pair read from the message source),
+ * but the sidecar is
  * token-first: unpriced models still count, cost rides along when known.
  */
 import type { Context } from '@deepseek-ai/cordis';
@@ -34,8 +35,8 @@ export interface Config {
 
 export const Config = Schema.object({
   enabled: Schema.boolean().default(true),
-  dataDir: Schema.string(),
-  exportDir: Schema.string(),
+  dataDir: Schema.string().default(''),
+  exportDir: Schema.string().default(''),
   topSessions: Schema.natural().default(10),
   recentDays: Schema.natural().default(14),
   prices: Schema.array(
@@ -56,13 +57,7 @@ export const Config = Schema.object({
   ).default([]),
 });
 
-interface ModelRef {
-  id: string;
-  provider?: string;
-}
-
 const dayOf = (iso: string): string => iso.slice(0, 10);
-
 export function apply(ctx: Context, config: Config): void {
   const log = ctx.logger('session-insights');
   if (!config.enabled) return void log.info('disabled by config');
@@ -70,22 +65,18 @@ export function apply(ctx: Context, config: Config): void {
   const catalog: PriceCatalog = mergeCatalog(DEEPSEEK_CATALOG, config.prices);
   const store = new SidecarStore(config.dataDir);
   const exportDir = config.exportDir ? expandHome(config.exportDir) : store.dataDir;
-  const modelByAgent = new Map<string, ModelRef>();
-
-  ctx.on('agent/request', (payload, next) =>
-    next().then((callConfig) => {
-      const shape = callConfig as unknown as { provider?: string; model?: string };
-      if (shape.model) modelByAgent.set(agentKey(payload.agent), { id: shape.model, provider: shape.provider });
-      return callConfig;
-    }),
-  );
 
   ctx.on('session/event', (session, event) => {
     if (event.type !== 'assistant/message') return;
     const usage = event.data.usage as RawUsage | undefined;
     if (!usage) return;
     const sessionId = String((session as { id?: unknown }).id ?? 'session');
-    const model = modelByAgent.get(agentKey(session)) ?? { id: 'unknown' };
+    // The assistant message's own source carries the provider/model pair that
+    // actually served this turn. The agent/request waterfall payload is
+    // {turn, step, signal} with no agent reference, so a map keyed off it
+    // cannot be correlated back to a session — read it from the event instead.
+    const source = (event.data as { message?: { source?: { provider?: string; model?: string } } }).message?.source;
+    const model = { id: source?.model ?? 'unknown', provider: source?.provider };
     const buckets = toBuckets(usage);
     const at = new Date().toISOString();
     let costMicros: number | undefined;
@@ -93,8 +84,13 @@ export function apply(ctx: Context, config: Config): void {
     const resolution = resolveModel(model.id, catalog, { provider: model.provider });
     if (resolution.kind === 'known') {
       const cost = costOf(buckets, resolution.entry, { at: new Date(), rules: {} });
-      costMicros = cost.micros;
-      currency = cost.currency;
+      // an incomplete price row yields NaN, and JSON.stringify(NaN) is null —
+      // the record would fail re-validation on read and silently vanish. A
+      // non-finite cost is recorded as no cost (tokens still count).
+      if (Number.isFinite(cost.micros) && cost.micros >= 0) {
+        costMicros = cost.micros;
+        currency = cost.currency;
+      }
     }
     const record: SessionEventRecord = {
       v: 1,
@@ -113,10 +109,6 @@ export function apply(ctx: Context, config: Config): void {
     } catch (error) {
       log.warn(`sidecar append failed: ${error instanceof Error ? error.message : String(error)}`);
     }
-  });
-
-  ctx.on('session/disposed', (session) => {
-    modelByAgent.delete(String((session as { id?: unknown }).id ?? ''));
   });
 
   ctx.commands.register({
@@ -149,11 +141,15 @@ export function apply(ctx: Context, config: Config): void {
     name: 'insights-export',
     description: '导出跨会话明细 CSV：/insights-export 2026-09（缺省全部）',
     input: { hint: '[YYYY-MM]' },
-    handler: async () => {
+    handler: async ({ rawInput }) => {
+      const month = String(rawInput ?? '').trim();
+      if (month && !/^\d{4}-\d{2}$/.test(month)) {
+        return { kind: 'error', text: `月份格式是 YYYY-MM，收到: ${month}` };
+      }
       const all = store.readAll();
-      const records = all.records;
-      if (!records.length) return { kind: 'error', text: '还没有任何会话记录。' };
-      const file = join(exportDir, 'session-insights.csv');
+      const records = month ? all.records.filter((record) => record.at.slice(0, 7) === month) : all.records;
+      if (!records.length) return { kind: 'error', text: month ? `${month} 没有会话记录。` : '还没有任何会话记录。' };
+      const file = join(exportDir, month ? `session-insights-${month}.csv` : 'session-insights.csv');
       const { mkdirSync, writeFileSync } = await import('node:fs');
       mkdirSync(exportDir, { recursive: true });
       writeFileSync(file, toCsv(records), 'utf8');
@@ -162,11 +158,5 @@ export function apply(ctx: Context, config: Config): void {
   });
 
   log.info(`mounted · dataDir=${store.dataDir}`);
-}
-
-
-function agentKey(agent: unknown): string {
-  const value = agent as { id?: string; session?: { id?: string } } | undefined;
-  return String(value?.id ?? value?.session?.id ?? 'agent');
 }
 
