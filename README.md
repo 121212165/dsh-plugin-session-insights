@@ -1,6 +1,8 @@
 # dsh-plugin-session-insights
 
-DeepSeek Harness (dsh) 插件：跨会话活动统计。host 侧把每个会话的每次模型调用累计进按月 JSONL 边车文件，提供 `/insights` 汇总（每日趋势 / 最贵会话 / 模型分布）与 `/insights-export` CSV 导出；web 客户端多一个 "Session Insights" 标签页（基于已验证的投影接口）。
+**EN** · Cross-session activity stats: every model call — priced or not — is appended to a monthly JSONL sidecar; `/insights` prints daily trend bars, priciest sessions and model mix, and `/insights-export <YYYY-MM>` writes a BOM+CRLF CSV. The model/provider pair is read from the assistant message's own `source`, **verified against 132 assistant/message events in 20 real persisted sessions**. · 12 `node --test` green · host-side only, no web UI · not live-mounted.
+
+DeepSeek Harness (dsh) 插件：跨会话活动统计。host 侧把每个会话的每次模型调用累计进按月 JSONL 边车文件，提供 `/insights` 汇总（每日趋势 / 最贵会话 / 模型分布）与 `/insights-export` CSV 导出（支持按月过滤）。
 
 与 [dsh-plugin-cost-ledger](https://github.com/121212165/dsh-plugin-cost-ledger) 的分工：cost-ledger 管**钱**（未计价事件直接丢弃），本插件管**活动**（token/轮次/模型分布，未计价模型照常统计，花费只是顺带字段）。
 
@@ -8,13 +10,25 @@ DeepSeek Harness (dsh) 插件：跨会话活动统计。host 侧把每个会话�
 
 - **`/insights`**：会话总数与 token 总量、近 N 天每日趋势（ASCII 条形）、最贵会话 Top 榜、模型分布。
 - **`/insights-export`**：明细 CSV（BOM + CRLF，Excel 直开）。
-- **web 面板**：`conversation.view` 槽位新增 "Session Insights" 标签，读 `sessionStats` / `tokenUsage` 投影展示当前会话统计——与 dsh-token-telemetry 同一条已验证数据路径。
 - **容错**：崩溃半行跳过并计数，文件不改写，`/insights` 里提示损坏行数。
 
 ## 安装
 
-克隆或 npm 安装本目录到 profile 的 node_modules，再在 profile 的 cordis.patch.yml 加入本仓库 cordis.patch.yml 的 insert 行。从源码安装需要先构建：`npm install` 会经 `prepare` 脚本自动产出 `lib/`（`npm run build` 也可手动触发）。
+三步，实测于 `@deepseek-ai/dsh@0.1.7-alpha.1`（需 `pnpm` 在 PATH 上）：
 
+```sh
+# ① 装进 profile：dsh plugin 把参数原样转发给 pnpm，git 包会自动跑 prepare 构建 lib/
+dsh plugin --profile web add github:121212165/dsh-plugin-session-insights
+```
+
+② 把本仓库根目录 `cordis.patch.yml` 的内容**并进** `$DSH_HOME/profiles/web/cordis.patch.yml`。
+该文件默认是 `[]`，所以要么整份替换，要么把 insert 条目并进同一个数组；**不要直接追加**——
+追加会形成两个 YAML 文档，启动即报
+`failed to parse overlay ... end of the stream or a document separator is expected`（本机实测踩过）。
+
+③ 重启 dsh。配置层与 client 半都要重启才生效（客户端按 boot 时算出的内容 rev 下发，硬刷新浏览器没用）。
+
+自检挂载：`dsh --profile web --dump-config | grep dsh-plugin-session-insights`，应看到该条目。
 ## 数据模型
 
 边车文件 `~/.dsh/session-insights/insights-YYYY-MM.jsonl`，每行：
@@ -39,13 +53,12 @@ DeepSeek Harness (dsh) 插件：跨会话活动统计。host 侧把每个会话�
 | `recentDays` | `14` | 每日趋势窗口 |
 | `prices` | `[]` | 形状与 price-aware.prices 一致 |
 
-## 查证状态（诚实清单）
+## 验证状态
 
-- **已验证**：`session/event`（assistant/message usage）、`agent/request`、`session/disposed`、`ctx.commands.register`——与 price-aware 相同的事件面；`conversation.view` 槽位 + `useProjection("sessionStats"/"tokenUsage")`——与 dsh-token-telemetry 相同的客户端面。
+- **已验证**：`session/event`（assistant/message usage）、`session/disposed`、`ctx.commands.register`——与 price-aware 相同的事件面；
 - **查证后放弃**：官方 `sidebar.panellist` / `session-query` 跨会话查询 API 在官方仓库文档中未找到插件侧可用的注册路径（`session-query-sqlite` 是 composition 内部包），故跨会话数据走自己的 JSONL 边车而不是读 harness 会话库。**本插件看不到它安装之前的历史会话**，从安装那一刻开始累计。
-- **未验证**：`dsh.client` manifest 与 `ctx.slots.inject` 的组合（telemetry 用的是同一形状，但 `inject` 列表里服务名以 dsh 实际解析为准）；未在运行中的 dsh 里 live mount。
+- **未验证**：未在运行中的 dsh 里 live mount。
 
-## 局限
+## 已知边界
 
 - 无历史回填；边车只含安装后的数据。
-- web 面板只展示当前会话，跨会话汇总走 `/insights` 命令。
