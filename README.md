@@ -1,5 +1,8 @@
 # dsh-plugin-session-insights
 
+> 🧩 **dsh 插件家族**（22 件）：总目录 **[dsh-plugin-family](https://github.com/121212165/dsh-plugin-family)** ｜ 明星插件：**[ide-hub](https://github.com/121212165/dsh-plugin-ide-hub)** 跨 IDE 统一管理 · **[task-forge](https://github.com/121212165/dsh-plugin-task-forge)** 跨窗口无损交接 · **[quota](https://github.com/121212165/dsh-plugin-quota)** 实时用量仪表
+
+
 **EN** · Cross-session activity stats: every model call — priced or not — is appended to a monthly JSONL sidecar; `/insights` prints daily trend bars, priciest sessions and model mix, and `/insights-export <YYYY-MM>` writes a BOM+CRLF CSV. The model/provider pair is read from the assistant message's own `source`, **verified against 132 assistant/message events in 20 real persisted sessions**. · 12 `node --test` green · host-side only, no web UI · not live-mounted.
 
 DeepSeek Harness (dsh) 插件：跨会话活动统计。host 侧把每个会话的每次模型调用累计进按月 JSONL 边车文件，提供 `/insights` 汇总（每日趋势 / 最贵会话 / 模型分布）与 `/insights-export` CSV 导出（支持按月过滤）。
