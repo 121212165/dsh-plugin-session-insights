@@ -45,3 +45,17 @@ test('~ expands to home', () => {
   const store = new SidecarStore('~/.dsh/session-insights');
   assert.ok(!store.dataDir.startsWith('~'));
 });
+
+test('the mtime cache serves repeats without re-parse and never hides a fresh append', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'insights-'));
+  const store = new SidecarStore(dir);
+  store.append({ ...record });
+  const first = store.readAll();
+  const second = store.readAll();
+  assert.equal(second.records.length, first.records.length);
+  assert.equal(second.skipped, first.skipped);
+  store.append({ ...record, turn: 2, at: '2026-09-15T03:00:00.000Z' });
+  const third = store.readAll();
+  assert.equal(third.records.length, first.records.length + 1, 'append flips the cache key, fresh data visible');
+  rmSync(dir, { recursive: true, force: true });
+});

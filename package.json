@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-session-insights",
   "version": "0.1.0",
-  "description": "dsh plugin: cross-session analytics. Host accumulates per-session usage into monthly JSONL sidecars and serves /insights + CSV export; web client gains a Session Insights tab from verified projections.",
+  "description": "dsh plugin: cross-session analytics. Host accumulates per-session usage into monthly JSONL sidecars and serves /insights + CSV export; host-side only, no web client tab.",
   "type": "module",
   "license": "MIT",
   "main": "./lib/index.js",
@@ -12,8 +12,8 @@
       "default": "./lib/index.js"
     },
     "./stats": {
-      "types": "./lib/types/pure/index.d.ts",
-      "default": "./lib/pure/index.js"
+      "types": "./lib/types/pure/stats.d.ts",
+      "default": "./lib/pure/stats.js"
     },
     "./package.json": "./package.json",
     "./locale/*": "./locale/*",
@@ -31,14 +31,6 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "platform": "web",
-      "inject": [
-        "@deepseek-ai/dsh-client-ui-renderer",
-        "@deepseek-ai/dsh-client-ui-session"
-      ],
-      "immediately": true
     }
   },
   "engines": {
@@ -71,7 +63,8 @@
     "@deepseek-ai/schemastery": "3.18.2",
     "@types/node": "26.6.2",
     "typescript": "7.0.2",
-    "@dsh-family/pricing": "workspace:*"
+    "@dsh-family/pricing": "workspace:*",
+    "@dsh-family/kit": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.0"
