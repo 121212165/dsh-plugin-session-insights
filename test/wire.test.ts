@@ -7,12 +7,12 @@
  * @module test/wire
  */
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readdirSync, existsSync, readFileSync, appendFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readdirSync, readFileSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 
-interface CapturedCommand { name: string; handler: (args?: { rawInput?: string }) => unknown }
+interface CapturedCommand { name: string; handler: (args?: { rawInput?: string | undefined }) => unknown }
 interface Listener { event: string; callback: (session: unknown, event: unknown) => unknown }
 
 type Apply = (ctx: unknown, config: Record<string, unknown>) => void;
