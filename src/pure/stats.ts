@@ -12,11 +12,11 @@ export interface SessionEventRecord {
   at: string; // ISO timestamp
   day: string; // YYYY-MM-DD (UTC), denormalized for cheap daily aggregation
   modelId: string;
-  provider?: string;
+  provider?: string | undefined;
   turn: number; // the turn this event belongs to; distinct turns are derived
   buckets: TokenBuckets;
-  costMicros?: Micros; // present only when the model was priceable
-  currency?: string;
+  costMicros?: Micros | undefined; // present only when the model was priceable
+  currency?: string | undefined;
 }
 
 export interface SessionStats {
@@ -117,7 +117,7 @@ export function aggregate(records: SessionEventRecord[], skippedLines = 0): Insi
     }
   }
 
-  for (const [sessionId, stats] of sessions) stats.models = stats.models.slice(0, MODEL_LIMIT);
+  for (const [, stats] of sessions) stats.models = stats.models.slice(0, MODEL_LIMIT);
   const sessionList = [...sessions.values()];
   for (const day of days.values()) {
     day.sessions = new Set(records.filter((r) => r.day === day.day && (r.currency ?? 'none') === day.currency).map((r) => r.sessionId)).size;

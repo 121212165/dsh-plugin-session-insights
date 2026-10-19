@@ -15,7 +15,6 @@ import type {} from '@deepseek-ai/dsh-session';
 import { SidecarStore, expandHome } from './sidecar-store.ts';
 import { aggregate, dayBars, type SessionEventRecord } from './pure/stats.ts';
 import { toCsv } from './pure/csv.ts';
-import { parseJsonl } from './pure/sidecar.ts';
 import { resolveModel } from './pricing/resolve.ts';
 import { toBuckets, type RawUsage } from './usage.ts';
 import { DEEPSEEK_CATALOG, mergeCatalog, type PriceCatalog, type PriceEntry } from './pricing/catalog.ts';
@@ -81,7 +80,7 @@ export function apply(ctx: Context, config: Config): void {
     const at = new Date().toISOString();
     let costMicros: number | undefined;
     let currency: string | undefined;
-    const resolution = resolveModel(model.id, catalog, { provider: model.provider });
+    const resolution = resolveModel(model.id, catalog, model.provider ? { provider: model.provider } : {});
     if (resolution.kind === 'known') {
       const cost = costOf(buckets, resolution.entry, { at: new Date(), rules: {} });
       // an incomplete price row yields NaN, and JSON.stringify(NaN) is null —
@@ -150,9 +149,8 @@ export function apply(ctx: Context, config: Config): void {
       const records = month ? all.records.filter((record) => record.at.slice(0, 7) === month) : all.records;
       if (!records.length) return { kind: 'error', text: month ? `${month} 没有会话记录。` : '还没有任何会话记录。' };
       const file = join(exportDir, month ? `session-insights-${month}.csv` : 'session-insights.csv');
-      const { mkdirSync, writeFileSync } = await import('node:fs');
-      mkdirSync(exportDir, { recursive: true });
-      writeFileSync(file, toCsv(records), 'utf8');
+      const { writeFileAtomic } = await import('@dsh-family/kit');
+      writeFileAtomic(file, toCsv(records));
       return { kind: 'success', text: `已导出 ${records.length} 条 -> ${file}` };
     },
   });
